@@ -3,12 +3,20 @@ from rest_framework import generics, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from .models import Attendance
+from rest_framework.authtoken.models import Token
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login
 from .serializers import AttendanceSerializer
 from django.utils import timezone
 from rest_framework import status
 from datetime import date
+from rest_framework.permissions import IsAuthenticated
+from django.contrib.auth.views import LogoutView as DjangoLogoutView
+from django.urls import reverse_lazy
+from rest_framework.authentication import SessionAuthentication
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
+
 class RegisterView(APIView):
     def post(self, request):
         username = request.data.get('username')
@@ -24,6 +32,13 @@ class RegisterView(APIView):
         return Response({'message': 'User created successfully.'}, status=status.HTTP_201_CREATED)
 
 class LoginView(APIView):
+    authentication_classes = [SessionAuthentication]
+    permission_classes = []
+    
+    @method_decorator(csrf_exempt)
+    def dispatch(self, *args, **kwargs):
+        return super().dispatch(*args, **kwargs)
+
     def post(self, request):
         username = request.data.get('username')
         password = request.data.get('password')
@@ -31,7 +46,11 @@ class LoginView(APIView):
         user = authenticate(request, username=username, password=password)
         if user is not None:
             login(request, user)  # sets session
-            return Response({'message': 'Login successful.'}, status=status.HTTP_200_OK)
+            return Response({
+                'message': 'Login successful.',
+                'username': user.username,
+                'user_id': user.id
+            }, status=status.HTTP_200_OK)
         else:
             return Response({'message': 'Invalid credentials.'}, status=status.HTTP_401_UNAUTHORIZED)
         
@@ -89,13 +108,13 @@ class MarkAttendanceView(APIView):
             return Response({"message": "You already checked in and out for this date."}, status=status.HTTP_400_BAD_REQUEST)
 
 class AttendanceListView(generics.ListAPIView):
-    queryset = Attendance.objects.all()
     serializer_class = AttendanceSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
         user = self.request.user
-        if user.role == 'staff':
+        # Use hasattr to check for 'role' if using default User model
+        if hasattr(user, 'role') and user.role == 'staff':
             return Attendance.objects.all()
         return Attendance.objects.filter(user=user)
 class AttendanceSummaryView(APIView):
@@ -107,8 +126,12 @@ class AttendanceSummaryView(APIView):
 
         present = attendances.filter(status="Present").count()
         absent = attendances.filter(status="Absent").count()
-
+        # Add serialized attendance records
+        serializer = AttendanceSerializer(attendances, many=True)
         return Response({
             'present': present,
-            'absent': absent
+            'absent': absent,
+            'records': serializer.data
         })
+class LogoutView(DjangoLogoutView):
+    next_page = reverse_lazy('login')

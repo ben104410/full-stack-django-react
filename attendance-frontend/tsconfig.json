@@ -1,0 +1,35 @@
+{
+  "compilerOptions": {
+     
+    // ✅ Enable JSX/TSX for React (React 17+ JSX transform)
+    "jsx": "react-jsx",
+
+    // ✅ Target modern JavaScript & module system
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "Bundler", // preferred for Vite
+
+    // ✅ Add required libraries for DOM and modern JS
+    "lib": ["DOM", "DOM.Iterable", "ESNext"],
+
+    // ✅ TypeScript settings
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "allowSyntheticDefaultImports": true,
+    "isolatedModules": true,
+    "noEmit": true,
+
+    // ✅ Optional alias for cleaner imports
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    }
+  },
+  "include": ["src"],
+  "exclude": ["dist", "node_modules"]
+}
+
+
+
